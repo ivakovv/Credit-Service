@@ -1,0 +1,106 @@
+{
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "title": "Application Schema",
+    "type": "object",
+    "required": [
+        "businessTransactionId",
+        "type"
+    ],
+    "properties": {
+        "version": {
+            "type": "integer",
+            "minimum": 1
+        },
+        "createdDate": {
+            "type": [
+                "string",
+                "null"
+            ],
+            "format": "date-time"
+        },
+        "updatedDate": {
+            "type": [
+                "string",
+                "null"
+            ],
+            "format": "date-time"
+        },
+        "businessTransactionId": {
+            "type": "string"
+        },
+        "type": {
+            "type": "string"
+        },
+        "status": {
+            "type": "string"
+        },
+        "requestConditions": {
+            "type": "object",
+            "required": [
+                "amount",
+                "featureLabels",
+                "rate",
+                "term"
+            ],
+            "properties": {
+                "amount": {
+                    "type": "number",
+                    "minimum": 0.0
+                },
+                "featureLabels": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "minItems": 1
+                },
+                "rate": {
+                    "type": "number",
+                    "minimum": 0.0
+                },
+                "term": {
+                    "type": "integer",
+                    "minimum": 0
+                }
+            }
+        },
+        "clientInfo": {
+            "type": "object",
+            "required": [
+                "actualBaseInfo",
+                "phoneNumber"
+            ],
+            "properties": {
+                "actualBaseInfo": {
+                    "type": "object",
+                    "required": [
+                        "firstName",
+                        "fullName",
+                        "lastName",
+                        "noMiddleName"
+                    ],
+                    "properties": {
+                        "firstName": {
+                            "type": "string"
+                        },
+                        "fullName": {
+                            "type": "string"
+                        },
+                        "lastName": {
+                            "type": "string"
+                        },
+                        "middleName": {
+                            "type": "string"
+                        },
+                        "noMiddleName": {
+                            "type": "boolean"
+                        }
+                    }
+                },
+                "phoneNumber": {
+                    "type": "string"
+                }
+            }
+        }
+    }
+}
