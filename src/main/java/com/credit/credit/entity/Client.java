@@ -25,7 +25,7 @@ public class Client {
     private Long id;
 
     @Pattern(message = "Некорректное имя",
-            regexp = "^[А-ЯЁ][а-яё]$")
+            regexp = "^[А-ЯЁ][а-яё]+$")
     @Length(min = 2)
     @NotNull
     @Column(name = "firstname", nullable = false)
@@ -39,7 +39,7 @@ public class Client {
     private String lastName;
 
     @Pattern(message = "Некорректное отчество",
-            regexp = "^[А-ЯЁ][а-яё]$")
+            regexp = "^[А-ЯЁ][а-яё]+$")
     @Length(min = 2)
     @Column(name = "middle_name", nullable = true)
     private String middleName;
