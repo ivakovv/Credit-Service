@@ -1,7 +1,7 @@
 package com.credit.credit.service;
 
-import com.credit.credit.dto.CreateClientRequestDto;
-import com.credit.credit.dto.UpdateClientRequestDto;
+import com.credit.credit.dto.client.CreateClientRequestDto;
+import com.credit.credit.dto.client.UpdateClientRequestDto;
 import com.credit.credit.entity.Client;
 import com.credit.credit.repository.ClientRepository;
 import com.credit.credit.service.interfaces.ClientService;

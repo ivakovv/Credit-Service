@@ -1,6 +1,5 @@
-package com.credit.credit.dto;
+package com.credit.credit.dto.client;
 
-import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
 import org.hibernate.validator.constraints.Length;
 

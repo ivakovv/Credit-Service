@@ -1,7 +1,7 @@
 package com.credit.credit.controller;
 
-import com.credit.credit.dto.CreateClientRequestDto;
-import com.credit.credit.dto.UpdateClientRequestDto;
+import com.credit.credit.dto.client.CreateClientRequestDto;
+import com.credit.credit.dto.client.UpdateClientRequestDto;
 import com.credit.credit.entity.Client;
 import com.credit.credit.service.ClientServiceImpl;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -46,6 +46,11 @@ public class ClientController {
         return ResponseEntity.ok(clientService.updateClient(id, request));
     }
 
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Информация о клиенте получена"),
+            @ApiResponse(responseCode = "404", description = "Клиент не найден"),
+            @ApiResponse(responseCode = "500", description = "Сервер временно недоступен")
+    })
     @GetMapping("/{client_id}")
     public ResponseEntity<Client> getClient(@PathVariable("client_id") Long id){
         return ResponseEntity.ok(clientService.getClient(id));
