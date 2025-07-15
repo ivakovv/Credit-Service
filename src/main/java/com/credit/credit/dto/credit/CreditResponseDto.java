@@ -21,7 +21,7 @@ public record CreditResponseDto(
     public static CreditResponseDto fromEntity(Credit credit) {
         return new CreditResponseDto(
                 credit.getId(),
-                credit.getBusinessTransactionId(),
+                credit.getBusinessTransactionId().toString(),
                 credit.getVersion(),
                 credit.getType(),
                 credit.getStatus(),

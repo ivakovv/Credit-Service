@@ -4,16 +4,17 @@ import com.credit.credit.dto.credit.CreateCreditRequestDto;
 import com.credit.credit.dto.credit.CreditResponseDto;
 import com.credit.credit.entity.Client;
 import com.credit.credit.entity.Credit;
-import com.credit.credit.enums.CreditStatus;
+import com.credit.credit.exception.NotFoundException;
+import com.credit.credit.mapper.CreditMapper;
 import com.credit.credit.repository.ClientRepository;
 import com.credit.credit.repository.CreditRepository;
 import com.credit.credit.service.interfaces.CreditService;
-import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
-import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
-import org.springframework.web.server.ResponseStatusException;
+import org.springframework.transaction.annotation.Isolation;
+import org.springframework.transaction.annotation.Transactional;
 
+import java.util.ArrayList;
 import java.util.Optional;
 
 @RequiredArgsConstructor
@@ -26,8 +27,10 @@ public class CreditServiceImpl implements CreditService {
 
     private final ClientServiceImpl clientService;
 
+    private final CreditMapper creditMapper;
 
-    @Transactional
+
+    @Transactional(isolation = Isolation.REPEATABLE_READ)
     @Override
     public CreditResponseDto createCredit(CreateCreditRequestDto request) {
         Client client = clientService.getClient(request.clientId());
@@ -42,26 +45,25 @@ public class CreditServiceImpl implements CreditService {
             return CreditResponseDto.fromEntity(existingCredit.get());
         }
 
-        Credit credit = new Credit();
-        credit.setBusinessTransactionId(request.businessTransactionId());
-        credit.setVersion(request.version());
-        credit.setType(request.type());
-        credit.setStatus(CreditStatus.NEW);
-        credit.setRequestConditions(request.requestConditions());
-        credit.setClient(client);
+        Credit credit = creditMapper.toCredit(request, client);
 
         Credit savedCredit = creditRepository.save(credit);
 
+        if (client.getCredits() == null) {
+            client.setCredits(new ArrayList<>());
+        }
         client.getCredits().add(savedCredit);
+
         clientRepository.save(client);
 
         return CreditResponseDto.fromEntity(savedCredit);
     }
 
+    @Transactional(isolation = Isolation.REPEATABLE_READ)
     @Override
     public CreditResponseDto getCredit(Long id){
-        return CreditResponseDto.fromEntity(creditRepository.findById(id).orElseThrow(
-                () -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Кредит не найден")));
+        return CreditResponseDto.fromEntity(creditRepository.findById(id)
+                .orElseThrow(() -> new NotFoundException("Credit", id)));
     }
 
 }

@@ -3,69 +3,72 @@ package com.credit.credit.service;
 import com.credit.credit.dto.client.CreateClientRequestDto;
 import com.credit.credit.dto.client.UpdateClientRequestDto;
 import com.credit.credit.entity.Client;
+import com.credit.credit.exception.ClientAlreadyExistsException;
+import com.credit.credit.exception.NotFoundException;
+import com.credit.credit.mapper.ClientMapper;
 import com.credit.credit.repository.ClientRepository;
 import com.credit.credit.service.interfaces.ClientService;
+import com.credit.credit.util.NameUtil;
 import lombok.RequiredArgsConstructor;
-import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
-import org.springframework.web.server.ResponseStatusException;
-
-import java.util.Objects;
+import org.springframework.transaction.annotation.Isolation;
+import org.springframework.transaction.annotation.Transactional;
 import java.util.Optional;
-import java.util.stream.Stream;
 
 @RequiredArgsConstructor
 @Service
 public class ClientServiceImpl implements ClientService {
 
     private final ClientRepository clientRepository;
+
+    private final ClientMapper clientMapper;
+
+    private final NameUtil nameUtil;
+
+    @Transactional(isolation = Isolation.REPEATABLE_READ)
     @Override
     public Client createClient(CreateClientRequestDto request){
         clientRepository.findByPhoneNumber(request.phoneNumber())
                 .ifPresent(client -> {
-                    throw new ResponseStatusException(HttpStatus.CONFLICT, "Пользователь уже существует");
+                    throw new ClientAlreadyExistsException(request.phoneNumber());
                 });
-        Client client = new Client();
 
-        client.setFullName(request.fullName());
-        client.setFirstName(request.firstName());
-        client.setLastName(request.lastName());
-        client.setMiddleName(request.middleName());
-        client.setPhoneNumber(request.phoneNumber());
+        Client client = clientMapper.toClient(request);
 
         return clientRepository.save(client);
     }
 
+    @Transactional(isolation = Isolation.REPEATABLE_READ)
     @Override
     public Client updateClient(Long id, UpdateClientRequestDto request) {
         Client client = clientRepository.findById(id)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Пользователь не найден"));
+                .orElseThrow(() -> new NotFoundException("Client", id));
 
-        boolean nameUpdated = Stream.of(
-                        request.firstName(),
-                        request.lastName(),
-                        request.middleName())
-                .anyMatch(Objects::nonNull);
+        nameUtil.updateNameFields(
+                client,
+                request.firstName(),
+                request.lastName(),
+                request.middleName()
+        );
 
-        Optional.ofNullable(request.firstName()).ifPresent(client::setFirstName);
-        Optional.ofNullable(request.lastName()).ifPresent(client::setLastName);
-        Optional.ofNullable(request.middleName()).ifPresent(client::setMiddleName);
         Optional.ofNullable(request.phone()).ifPresent(client::setPhoneNumber);
 
-        if (nameUpdated) {
-            client.setFullName(String.format("%s %s %s",
+        if (nameUtil.isNameUpdated(request.firstName(), request.lastName(), request.middleName())) {
+            client.setFullName(nameUtil.generateFullName(
                     client.getLastName(),
                     client.getFirstName(),
-                    Optional.ofNullable(client.getMiddleName()).orElse("")).trim());
+                    client.getMiddleName()
+            ));
         }
 
         return clientRepository.save(client);
     }
 
+    @Transactional(isolation = Isolation.REPEATABLE_READ)
     @Override
     public Client getClient(Long id){
         return clientRepository.findById(id)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Пользователь не найден"));
+                .orElseThrow(() -> new NotFoundException("Client", id));
     }
 
 }
