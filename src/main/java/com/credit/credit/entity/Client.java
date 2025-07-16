@@ -20,17 +20,26 @@ import java.util.List;
 @Entity
 @Table(name = "clients")
 public class Client {
+    /**
+     * Id клиента в системе
+     */
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    /**
+     * Имя клиента
+     */
     @Pattern(message = "Некорректное имя",
-            regexp = "^[А-ЯЁ][а-яё]$")
+            regexp = "^[А-ЯЁ][а-яё]+$")
     @Length(min = 2)
     @NotNull
     @Column(name = "firstname", nullable = false)
     private String firstName;
 
+    /**
+     * Фамилия клиента
+     */
     @Pattern(message = "Некорректный формат фамилии:",
             regexp = "^[А-ЯЁ][а-яё]*(?:-[А-ЯЁ][а-яё]*)*$")
     @Length(min = 2)
@@ -38,16 +47,25 @@ public class Client {
     @Column(name = "lastname", nullable = false)
     private String lastName;
 
+    /**
+     * Отчество клиента
+     */
     @Pattern(message = "Некорректное отчество",
-            regexp = "^[А-ЯЁ][а-яё]$")
+            regexp = "^[А-ЯЁ][а-яё]+$")
     @Length(min = 2)
     @Column(name = "middle_name", nullable = true)
     private String middleName;
 
+    /**
+     * Полное ФИО клиента
+     */
     @Column(name = "full_name", nullable = false)
     @NotNull
     private String fullName;
 
+    /**
+     * Российский номер телефона клиента
+     */
     @Pattern(message = "Некорректный формат телефона:",
             regexp = "^\\+?\\d+$")
     @Length(min = 11, max = 12)
@@ -55,6 +73,9 @@ public class Client {
     @Column(name = "phone_number", nullable = false)
     private String phoneNumber;
 
+    /**
+     * Все кредиты клиента
+     */
     @OneToMany
     private List<Credit> credits;
 }

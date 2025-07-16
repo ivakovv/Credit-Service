@@ -16,18 +16,30 @@ import java.util.List;
 @Setter
 @Embeddable
 public class RequestConditions {
+    /**
+     * Сумма выдачи кредита
+     */
     @NotNull
     @DecimalMin("0.0")
     private BigDecimal amount;
 
+    /**
+     * Процентная ставка по кредиту
+     */
     @NotNull
     @DecimalMin("0.0")
     private BigDecimal rate;
 
+    /**
+     * Период кредита
+     */
     @NotNull
     @Min(0)
     private Integer term;
 
+    /**
+     * Массив меток для кредита
+     */
     @Size(min = 1)
     @NotEmpty
     private List<String> featureLabels;
