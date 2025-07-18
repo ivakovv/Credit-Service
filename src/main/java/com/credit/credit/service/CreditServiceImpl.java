@@ -4,12 +4,14 @@ import com.credit.credit.dto.credit.CreateCreditRequestDto;
 import com.credit.credit.dto.credit.CreditResponseDto;
 import com.credit.credit.entity.Client;
 import com.credit.credit.entity.Credit;
+import com.credit.credit.enums.CreditStatus;
 import com.credit.credit.exception.NotFoundException;
 import com.credit.credit.mapper.CreditMapper;
 import com.credit.credit.repository.ClientRepository;
 import com.credit.credit.repository.CreditRepository;
 import com.credit.credit.service.interfaces.CreditService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Isolation;
 import org.springframework.transaction.annotation.Transactional;
@@ -28,6 +30,8 @@ public class CreditServiceImpl implements CreditService {
     private final ClientServiceImpl clientService;
 
     private final CreditMapper creditMapper;
+
+    private final KafkaTemplate<String, Object> kafkaTemplate;
 
 
     @Transactional(isolation = Isolation.REPEATABLE_READ)
@@ -56,6 +60,8 @@ public class CreditServiceImpl implements CreditService {
 
         clientRepository.save(client);
 
+        kafkaTemplate.send("new-credits", credit.getId());
+
         return CreditResponseDto.fromEntity(savedCredit);
     }
 
@@ -64,6 +70,16 @@ public class CreditServiceImpl implements CreditService {
     public CreditResponseDto getCredit(Long id){
         return CreditResponseDto.fromEntity(creditRepository.findById(id)
                 .orElseThrow(() -> new NotFoundException("Credit", id)));
+    }
+
+    @Transactional(isolation = Isolation.REPEATABLE_READ)
+    @Override
+    public void changeCreditStatus(Long id, CreditStatus status) {
+        Credit credit = creditRepository.findById(id)
+                .orElseThrow(() -> new NotFoundException("Credit", id));
+        credit.setStatus(status);
+        creditRepository.save(credit);
+        kafkaTemplate.send("credits", credit);
     }
 
 }

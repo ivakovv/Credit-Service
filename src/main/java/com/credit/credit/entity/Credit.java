@@ -2,6 +2,7 @@ package com.credit.credit.entity;
 
 import com.credit.credit.enums.CreditStatus;
 import com.credit.credit.enums.CreditType;
+import com.fasterxml.jackson.annotation.JsonBackReference;
 import jakarta.persistence.Column;
 import jakarta.persistence.Embedded;
 import jakarta.persistence.Entity;
@@ -96,6 +97,7 @@ public class Credit {
     @Column(name = "updated_at")
     private OffsetDateTime updatedAt;
 
+    @JsonBackReference
     @ManyToOne()
     @JoinColumn(name = "client_id")
     private Client client;

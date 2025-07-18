@@ -2,6 +2,7 @@ package com.credit.credit.service.interfaces;
 
 import com.credit.credit.dto.credit.CreateCreditRequestDto;
 import com.credit.credit.dto.credit.CreditResponseDto;
+import com.credit.credit.enums.CreditStatus;
 
 
 public interface CreditService {
@@ -28,4 +29,16 @@ public interface CreditService {
      * @see CreditResponseDto
      */
     CreditResponseDto getCredit(Long id);
+
+    /**
+     * @author Ivakov Andrey
+     *      * <p>
+     *      *     <i> <b> Метод для изменения статуса кредита </b> </i>
+     *      * </p>
+     * @param id: id кредита
+     * @param status: статус на который необходимо изменить кредит
+     * @see CreditStatus
+     *
+     */
+    void changeCreditStatus(Long id, CreditStatus status);
 }
