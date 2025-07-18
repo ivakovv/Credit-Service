@@ -2,6 +2,7 @@ package com.credit.credit.entity;
 
 import com.credit.credit.enums.CreditStatus;
 import com.credit.credit.enums.CreditType;
+import com.fasterxml.jackson.annotation.JsonBackReference;
 import jakarta.persistence.Column;
 import jakarta.persistence.Embedded;
 import jakarta.persistence.Entity;
@@ -20,9 +21,7 @@ import jakarta.validation.constraints.NotNull;
 import lombok.Getter;
 import lombok.Setter;
 import org.hibernate.annotations.CreationTimestamp;
-import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.annotations.UpdateTimestamp;
-import org.hibernate.type.SqlTypes;
 
 import java.time.OffsetDateTime;
 import java.util.UUID;
@@ -43,8 +42,7 @@ public class Credit {
      * Id бизнес транзакции
      * Генерируется автоматически
      */
-    @Column(columnDefinition = "UUID", nullable = false, updatable = false)
-    @JdbcTypeCode(SqlTypes.VARCHAR)
+    @Column(nullable = false, updatable = false)
     private UUID businessTransactionId;
 
     /**
@@ -96,6 +94,7 @@ public class Credit {
     @Column(name = "updated_at")
     private OffsetDateTime updatedAt;
 
+    @JsonBackReference
     @ManyToOne()
     @JoinColumn(name = "client_id")
     private Client client;

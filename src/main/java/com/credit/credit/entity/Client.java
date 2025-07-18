@@ -1,5 +1,6 @@
 package com.credit.credit.entity;
 
+import com.fasterxml.jackson.annotation.JsonManagedReference;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
@@ -76,6 +77,7 @@ public class Client {
     /**
      * Все кредиты клиента
      */
+    @JsonManagedReference
     @OneToMany
     private List<Credit> credits;
 }
