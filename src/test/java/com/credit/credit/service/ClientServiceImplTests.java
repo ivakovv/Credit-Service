@@ -4,25 +4,35 @@ import com.credit.credit.dto.client.CreateClientRequestDto;
 import com.credit.credit.dto.client.UpdateClientRequestDto;
 import com.credit.credit.entity.Client;
 import com.credit.credit.repository.ClientRepository;
+import com.credit.credit.exception.ClientAlreadyExistsException;
+import com.credit.credit.exception.NotFoundException;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.http.HttpStatus;
-import org.springframework.web.server.ResponseStatusException;
 
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.*;
+
+import com.credit.credit.mapper.ClientMapper;
+import com.credit.credit.util.NameUtil;
 
 @ExtendWith(MockitoExtension.class)
 class ClientServiceImplTest {
 
     @Mock
     private ClientRepository clientRepository;
+
+    @Mock
+    private ClientMapper clientMapper;
+
+    @Mock
+    private NameUtil nameUtil;
 
     @InjectMocks
     private ClientServiceImpl clientService;
@@ -45,6 +55,8 @@ class ClientServiceImplTest {
         );
 
         when(clientRepository.findByPhoneNumber(TEST_PHONE)).thenReturn(Optional.empty());
+        Client mappedClient = createTestClient(null);
+        when(clientMapper.toClient(request)).thenReturn(mappedClient);
         when(clientRepository.save(any(Client.class))).thenAnswer(invocation -> {
             Client client = invocation.getArgument(0);
             client.setId(1L);
@@ -68,6 +80,27 @@ class ClientServiceImplTest {
     }
 
     @Test
+    void createClient_WhenClientAlreadyExists_ThrowsClientAlreadyExistsException() {
+        // Arrange
+        CreateClientRequestDto request = new CreateClientRequestDto(
+                TEST_FIRST_NAME,
+                TEST_LAST_NAME,
+                TEST_MIDDLE_NAME,
+                EXPECTED_FULL_NAME,
+                TEST_PHONE
+        );
+        Client existingClient = createTestClient(1L);
+        when(clientRepository.findByPhoneNumber(TEST_PHONE)).thenReturn(Optional.of(existingClient));
+
+        // Act & Assert
+        ClientAlreadyExistsException exception = assertThrows(ClientAlreadyExistsException.class,
+                () -> clientService.createClient(request));
+        assertTrue(exception.getMessage().contains(TEST_PHONE));
+        verify(clientRepository).findByPhoneNumber(TEST_PHONE);
+        verify(clientRepository, never()).save(any(Client.class));
+    }
+
+    @Test
     void updateClient_Success_AllFields() {
         // Arrange
         Long clientId = 1L;
@@ -88,6 +121,19 @@ class ClientServiceImplTest {
 
         when(clientRepository.findById(clientId)).thenReturn(Optional.of(existingClient));
         when(clientRepository.save(any(Client.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        // Мокаем NameUtil
+        doAnswer(invocation -> {
+            Client client = invocation.getArgument(0);
+            String firstName = invocation.getArgument(1);
+            String lastName = invocation.getArgument(2);
+            String middleName = invocation.getArgument(3);
+            if (firstName != null) client.setFirstName(firstName);
+            if (lastName != null) client.setLastName(lastName);
+            if (middleName != null) client.setMiddleName(middleName);
+            return null;
+        }).when(nameUtil).updateNameFields(any(Client.class), any(), any(), any());
+        when(nameUtil.isNameUpdated(updatedFirstName, updatedLastName, updatedMiddleName)).thenReturn(true);
+        when(nameUtil.generateFullName(anyString(), anyString(), anyString())).thenReturn(expectedUpdatedFullName);
 
         // Act
         Client result = clientService.updateClient(clientId, request);
@@ -123,6 +169,18 @@ class ClientServiceImplTest {
 
         when(clientRepository.findById(clientId)).thenReturn(Optional.of(existingClient));
         when(clientRepository.save(any(Client.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        doAnswer(invocation -> {
+            Client client = invocation.getArgument(0);
+            String firstName = invocation.getArgument(1);
+            String lastName = invocation.getArgument(2);
+            String middleName = invocation.getArgument(3);
+            if (firstName != null) client.setFirstName(firstName);
+            if (lastName != null) client.setLastName(lastName);
+            if (middleName != null) client.setMiddleName(middleName);
+            return null;
+        }).when(nameUtil).updateNameFields(any(Client.class), any(), any(), any());
+        when(nameUtil.isNameUpdated(updatedFirstName, null, null)).thenReturn(true);
+        when(nameUtil.generateFullName(anyString(), anyString(), anyString())).thenReturn(expectedUpdatedFullName);
 
         // Act
         Client result = clientService.updateClient(clientId, request);
@@ -154,12 +212,10 @@ class ClientServiceImplTest {
         when(clientRepository.findById(clientId)).thenReturn(Optional.empty());
 
         // Act & Assert
-        ResponseStatusException exception = assertThrows(ResponseStatusException.class,
+        NotFoundException exception = assertThrows(NotFoundException.class,
                 () -> clientService.updateClient(clientId, request));
-
-        assertEquals(HttpStatus.NOT_FOUND, exception.getStatusCode());
-        assertEquals("Пользователь не найден", exception.getReason());
-
+        assertTrue(exception.getMessage().contains("Client"));
+        assertTrue(exception.getMessage().contains(clientId.toString()));
         verify(clientRepository).findById(clientId);
         verify(clientRepository, never()).save(any(Client.class));
     }
@@ -189,11 +245,10 @@ class ClientServiceImplTest {
         when(clientRepository.findById(clientId)).thenReturn(Optional.empty());
 
         // Act & Assert
-        ResponseStatusException exception = assertThrows(ResponseStatusException.class,
+        NotFoundException exception = assertThrows(NotFoundException.class,
                 () -> clientService.getClient(clientId));
-
-        assertEquals(HttpStatus.NOT_FOUND, exception.getStatusCode());
-        assertEquals("Пользователь не найден", exception.getReason());
+        assertTrue(exception.getMessage().contains("Client"));
+        assertTrue(exception.getMessage().contains(clientId.toString()));
         verify(clientRepository).findById(clientId);
     }
 

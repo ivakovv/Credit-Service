@@ -22,7 +22,7 @@ public interface CreditService {
     /**
      * @author Ivakov Andrey
      *      * <p>
-     *      *     <i> <b> Метод возращает кредит </b> </i>
+     *          <i> <b> Метод возращает кредит </b> </i>
      *      * </p>
      * @param id: id кредита
      * @return кредит
@@ -33,7 +33,7 @@ public interface CreditService {
     /**
      * @author Ivakov Andrey
      *      * <p>
-     *      *     <i> <b> Метод для изменения статуса кредита </b> </i>
+     *          <i> <b> Метод для изменения статуса кредита </b> </i>
      *      * </p>
      * @param id: id кредита
      * @param status: статус на который необходимо изменить кредит
