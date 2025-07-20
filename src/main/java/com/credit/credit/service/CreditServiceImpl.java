@@ -11,6 +11,7 @@ import com.credit.credit.repository.ClientRepository;
 import com.credit.credit.repository.CreditRepository;
 import com.credit.credit.service.interfaces.CreditService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Isolation;
@@ -32,6 +33,12 @@ public class CreditServiceImpl implements CreditService {
     private final CreditMapper creditMapper;
 
     private final KafkaTemplate<String, Object> kafkaTemplate;
+
+    @Value("${spring.kafka.producer.topics.credits}")
+    private String creditsTopic;
+
+    @Value("${spring.kafka.producer.topics.new-credits}")
+    private String newCreditsTopic;
 
 
     @Transactional(isolation = Isolation.REPEATABLE_READ)
@@ -60,7 +67,7 @@ public class CreditServiceImpl implements CreditService {
 
         clientRepository.save(client);
 
-        kafkaTemplate.send("new-credits", credit.getId());
+        sendCreditToKafka(newCreditsTopic, credit.getId());
 
         return CreditResponseDto.fromEntity(savedCredit);
     }
@@ -79,7 +86,16 @@ public class CreditServiceImpl implements CreditService {
                 .orElseThrow(() -> new NotFoundException("Credit", id));
         credit.setStatus(status);
         creditRepository.save(credit);
-        kafkaTemplate.send("credits", credit);
+        sendCreditToKafka(creditsTopic, credit);
     }
 
+    @Transactional(isolation = Isolation.REPEATABLE_READ)
+    public void finalizeCredit(Credit credit) {
+        credit.setStatus(CreditStatus.CLOSED);
+        creditRepository.save(credit);
+    }
+
+    public void sendCreditToKafka(String topic, Object message) {
+        kafkaTemplate.send(topic, message);
+    }
 }

@@ -257,4 +257,20 @@ class CreditServiceImplTest {
 
         verify(creditRepository).findById(CREDIT_ID);
     }
+    @Test
+    void finalizeCredit_SetsStatusClosed_AndSavesCredit() {
+        // Arrange
+        Credit credit = new Credit();
+        credit.setId(CREDIT_ID);
+        credit.setStatus(CreditStatus.APPROVED);
+
+        when(creditRepository.save(credit)).thenReturn(credit);
+
+        // Act
+        creditService.finalizeCredit(credit);
+
+        // Assert
+        assertEquals(CreditStatus.CLOSED, credit.getStatus());
+        verify(creditRepository).save(credit);
+    }
 }
