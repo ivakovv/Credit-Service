@@ -4,12 +4,15 @@ import com.credit.credit.dto.credit.CreateCreditRequestDto;
 import com.credit.credit.dto.credit.CreditResponseDto;
 import com.credit.credit.entity.Client;
 import com.credit.credit.entity.Credit;
+import com.credit.credit.enums.CreditStatus;
 import com.credit.credit.exception.NotFoundException;
 import com.credit.credit.mapper.CreditMapper;
 import com.credit.credit.repository.ClientRepository;
 import com.credit.credit.repository.CreditRepository;
 import com.credit.credit.service.interfaces.CreditService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Isolation;
 import org.springframework.transaction.annotation.Transactional;
@@ -28,6 +31,14 @@ public class CreditServiceImpl implements CreditService {
     private final ClientServiceImpl clientService;
 
     private final CreditMapper creditMapper;
+
+    private final KafkaTemplate<String, Object> kafkaTemplate;
+
+    @Value("${spring.kafka.producer.topics.credits}")
+    private String creditsTopic;
+
+    @Value("${spring.kafka.producer.topics.new-credits}")
+    private String newCreditsTopic;
 
 
     @Transactional(isolation = Isolation.REPEATABLE_READ)
@@ -56,6 +67,8 @@ public class CreditServiceImpl implements CreditService {
 
         clientRepository.save(client);
 
+        sendCreditToKafka(newCreditsTopic, credit.getId());
+
         return CreditResponseDto.fromEntity(savedCredit);
     }
 
@@ -66,4 +79,23 @@ public class CreditServiceImpl implements CreditService {
                 .orElseThrow(() -> new NotFoundException("Credit", id)));
     }
 
+    @Transactional(isolation = Isolation.REPEATABLE_READ)
+    @Override
+    public void changeCreditStatus(Long id, CreditStatus status) {
+        Credit credit = creditRepository.findById(id)
+                .orElseThrow(() -> new NotFoundException("Credit", id));
+        credit.setStatus(status);
+        creditRepository.save(credit);
+        sendCreditToKafka(creditsTopic, credit);
+    }
+
+    @Transactional(isolation = Isolation.REPEATABLE_READ)
+    public void finalizeCredit(Credit credit) {
+        credit.setStatus(CreditStatus.CLOSED);
+        creditRepository.save(credit);
+    }
+
+    public void sendCreditToKafka(String topic, Object message) {
+        kafkaTemplate.send(topic, message);
+    }
 }

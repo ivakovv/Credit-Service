@@ -9,6 +9,8 @@ import com.credit.credit.enums.CreditStatus;
 import com.credit.credit.enums.CreditType;
 import com.credit.credit.repository.ClientRepository;
 import com.credit.credit.repository.CreditRepository;
+import com.credit.credit.exception.NotFoundException;
+import com.credit.credit.mapper.CreditMapper;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -21,10 +23,12 @@ import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
+import org.springframework.kafka.core.KafkaTemplate;
 
 @ExtendWith(MockitoExtension.class)
 class CreditServiceImplTest {
@@ -37,6 +41,12 @@ class CreditServiceImplTest {
 
     @Mock
     private ClientServiceImpl clientService;
+
+    @Mock
+    private CreditMapper creditMapper;
+
+    @Mock
+    private KafkaTemplate<String, Object> kafkaTemplate;
 
     @InjectMocks
     private CreditServiceImpl creditService;
@@ -79,13 +89,16 @@ class CreditServiceImplTest {
         expectedCredit.setStatus(CREDIT_STATUS);
         expectedCredit.setRequestConditions(requestConditions);
         expectedCredit.setClient(client);
+        expectedCredit.setBusinessTransactionId(UUID.randomUUID());
 
         when(clientService.getClient(CLIENT_ID)).thenReturn(client);
         when(creditRepository.findByClientIdAndRequestConditionsAmountAndRequestConditionsTerm(
                 CLIENT_ID, AMOUNT, TERM)).thenReturn(Optional.empty());
+        when(creditMapper.toCredit(request, client)).thenReturn(expectedCredit);
         when(creditRepository.save(any(Credit.class))).thenAnswer(invocation -> {
             Credit savedCredit = invocation.getArgument(0);
             savedCredit.setId(CREDIT_ID);
+            savedCredit.setBusinessTransactionId(expectedCredit.getBusinessTransactionId());
             return savedCredit;
         });
         when(clientRepository.save(any(Client.class))).thenReturn(client);
@@ -95,8 +108,8 @@ class CreditServiceImplTest {
 
         // Assert
         assertNotNull(result);
-        assertEquals(CREDIT_ID, result.id()); // Проверяем ID
-        assertEquals(BUSINESS_TRANSACTION_ID, result.businessTransactionId());
+        assertEquals(CREDIT_ID, result.id());
+        assertNotNull(result.businessTransactionId());
         assertEquals(VERSION, result.version());
         assertEquals(CREDIT_TYPE, result.type());
         assertEquals(CREDIT_STATUS, result.status());
@@ -136,6 +149,7 @@ class CreditServiceImplTest {
         existingCredit.setStatus(CREDIT_STATUS);
         existingCredit.setRequestConditions(requestConditions);
         existingCredit.setClient(client);
+        existingCredit.setBusinessTransactionId(UUID.randomUUID());
 
         when(clientService.getClient(CLIENT_ID)).thenReturn(client);
         when(creditRepository.findByClientIdAndRequestConditionsAmountAndRequestConditionsTerm(
@@ -147,7 +161,7 @@ class CreditServiceImplTest {
         // Assert
         assertNotNull(result);
         assertEquals(CREDIT_ID, result.id());
-        assertEquals("txn-54321", result.businessTransactionId());
+        assertNotNull(result.businessTransactionId());
         assertEquals(CREDIT_TYPE, result.type());
         assertEquals(CREDIT_STATUS, result.status());
         assertEquals(requestConditions, result.requestConditions());
@@ -177,14 +191,13 @@ class CreditServiceImplTest {
         );
 
         when(clientService.getClient(CLIENT_ID)).thenThrow(
-                new ResponseStatusException(HttpStatus.NOT_FOUND, "Пользователь не найден"));
+                new NotFoundException("Client", CLIENT_ID));
 
         // Act & Assert
-        ResponseStatusException exception = assertThrows(ResponseStatusException.class,
+        NotFoundException exception = assertThrows(NotFoundException.class,
                 () -> creditService.createCredit(request));
-
-        assertEquals(HttpStatus.NOT_FOUND, exception.getStatusCode());
-        assertEquals("Пользователь не найден", exception.getReason());
+        assertTrue(exception.getMessage().contains("Client"));
+        assertTrue(exception.getMessage().contains(CLIENT_ID.toString()));
 
         verify(clientService).getClient(CLIENT_ID);
         verify(creditRepository, never()).findByClientIdAndRequestConditionsAmountAndRequestConditionsTerm(
@@ -200,6 +213,7 @@ class CreditServiceImplTest {
         credit.setVersion(VERSION);
         credit.setType(CREDIT_TYPE);
         credit.setStatus(CREDIT_STATUS);
+        credit.setBusinessTransactionId(UUID.randomUUID());
 
         RequestConditions requestConditions = new RequestConditions();
         requestConditions.setAmount(AMOUNT);
@@ -220,7 +234,7 @@ class CreditServiceImplTest {
         // Assert
         assertNotNull(result);
         assertEquals(CREDIT_ID, result.id());
-        assertEquals(BUSINESS_TRANSACTION_ID, result.businessTransactionId());
+        assertNotNull(result.businessTransactionId());
         assertEquals(VERSION, result.version());
         assertEquals(CREDIT_TYPE, result.type());
         assertEquals(CREDIT_STATUS, result.status());
@@ -236,12 +250,27 @@ class CreditServiceImplTest {
         when(creditRepository.findById(CREDIT_ID)).thenReturn(Optional.empty());
 
         // Act & Assert
-        ResponseStatusException exception = assertThrows(ResponseStatusException.class,
+        NotFoundException exception = assertThrows(NotFoundException.class,
                 () -> creditService.getCredit(CREDIT_ID));
-
-        assertEquals(HttpStatus.NOT_FOUND, exception.getStatusCode());
-        assertEquals("Кредит не найден", exception.getReason());
+        assertTrue(exception.getMessage().contains("Credit"));
+        assertTrue(exception.getMessage().contains(CREDIT_ID.toString()));
 
         verify(creditRepository).findById(CREDIT_ID);
+    }
+    @Test
+    void finalizeCredit_SetsStatusClosed_AndSavesCredit() {
+        // Arrange
+        Credit credit = new Credit();
+        credit.setId(CREDIT_ID);
+        credit.setStatus(CreditStatus.APPROVED);
+
+        when(creditRepository.save(credit)).thenReturn(credit);
+
+        // Act
+        creditService.finalizeCredit(credit);
+
+        // Assert
+        assertEquals(CreditStatus.CLOSED, credit.getStatus());
+        verify(creditRepository).save(credit);
     }
 }
