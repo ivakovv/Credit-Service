@@ -34,6 +34,14 @@ spring:
       topics:
         credits: credits
         new-credits: new-credits
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus
+  endpoint:
+    prometheus:
+      enabled: true
 
 server:
   error:
